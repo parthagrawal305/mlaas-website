@@ -262,7 +262,7 @@ function initContactForm() {
         
         // Show loading state
         submitBtn.innerHTML = `
-            <span>Processing...</span>
+            <span>Processing securely...</span>
             <svg class="spinner" width="20" height="20" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="40" stroke-dashoffset="10">
                     <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
@@ -274,31 +274,48 @@ function initContactForm() {
         // Collect form data
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        
-        // Simulate processing (in production, send to your backend)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Generate reference ID
-        const refId = 'MLAAS-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
-        
-        // Show success modal
-        showModal(refId);
-        
-        // Reset form
-        form.reset();
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        
-        // Log data (in production, send to backend/email service)
-        console.log('Form submission:', { ...data, refId });
-        
-        // Prepare mailto fallback with form data
-        const mailtoLink = `mailto:parthagrawal2183@gmail.com?subject=MLAAS Inquiry - ${refId}&body=Name: ${data.name}%0D%0AEmail: ${data.email}%0D%0AAmount Range: ${data.amount}%0D%0A%0D%0AMessage:%0D%0A${encodeURIComponent(data.message || 'No message provided')}`;
-        
-        // Open email client as backup
-        setTimeout(() => {
-            window.location.href = mailtoLink;
-        }, 1000);
+
+        try {
+            // Send to Vercel serverless function, which will talk to Notion
+            const apiRes = await fetch('/api/notion-submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: data.name,
+                    email: data.email,
+                    volume: data.amount,
+                    brief: data.message || ''
+                })
+            });
+
+            const apiData = await apiRes.json();
+
+            if (!apiRes.ok) {
+                console.error('API error:', apiData);
+                alert('Something went wrong while securing your inquiry. Please try again or contact us directly.');
+            } else {
+                // Use short ticket-style reference ID coming from the server, e.g. "#REQ-A12324"
+                const refId =
+                    apiData.ticketId ||
+                    '#REQ-' +
+                        String.fromCharCode(65 + Math.floor(Math.random() * 26)) +
+                        Math.floor(10000 + Math.random() * 90000);
+
+                // Show success modal
+                showModal(refId);
+
+                // Reset form
+                form.reset();
+            }
+        } catch (err) {
+            console.error('Unexpected error submitting to Notion:', err);
+            alert('Network issue while sending your inquiry. Please try again.');
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
     });
 }
 
