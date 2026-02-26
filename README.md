@@ -37,3 +37,7 @@ npm run dev
 Needs a `.env` with `NOTION_TOKEN` and `NOTION_DATABASE_ID` for the contact form.
 
 > Obviously, this is satire. No actual services offered.
+
+---
+
+<sub>README generated with AI ✨</sub>
